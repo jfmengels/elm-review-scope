@@ -132,8 +132,8 @@ fromModuleToProject moduleName (ModuleContext moduleContext) =
 foldProjectContexts : ProjectContext -> ProjectContext -> ProjectContext
 foldProjectContexts (ProjectContext a) (ProjectContext b) =
     ProjectContext
-        { dependenciesModules = a.dependenciesModules
-        , modules = Dict.union a.modules b.modules
+        { dependenciesModules = Dict.union b.dependenciesModules a.dependenciesModules
+        , modules = Dict.union b.modules a.modules
         }
 
 
