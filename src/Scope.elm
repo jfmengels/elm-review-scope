@@ -1,3 +1,30 @@
+module Scope exposing
+    ( ModuleContext, addModuleVisitors, initialModuleContext
+    , ProjectContext, addProjectVisitors
+    , initialProjectContext, fromProjectToModule, fromModuleToProject, foldProjectContexts
+    , realModuleName
+    )
+
+{-| Collect and infer information automatically for you
+
+
+# Adding to a module rule
+
+@docs ModuleContext, addModuleVisitors, initialModuleContext
+
+
+# Adding to a project rule
+
+@docs ProjectContext, addProjectVisitors
+@docs initialProjectContext, fromProjectToModule, fromModuleToProject, foldProjectContexts
+
+
+# Access
+
+@docs realModuleName
+
+-}
+
 {-
    Copyright (c) 2020, Jeroen Engels
    All rights reserved.
@@ -26,34 +53,6 @@
    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
    OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
--}
-
-
-module Scope exposing
-    ( ModuleContext, addModuleVisitors, initialModuleContext
-    , ProjectContext, addProjectVisitors
-    , initialProjectContext, fromProjectToModule, fromModuleToProject, foldProjectContexts
-    , realModuleName
-    )
-
-{-| Collect and infer information automatically for you
-
-
-# Adding to a module rule
-
-@docs ModuleContext, addModuleVisitors, initialModuleContext
-
-
-# Adding to a project rule
-
-@docs ProjectContext, addProjectVisitors
-@docs initialProjectContext, fromProjectToModule, fromModuleToProject, foldProjectContexts
-
-
-# Access
-
-@docs realModuleName
-
 -}
 
 import Dict exposing (Dict)
