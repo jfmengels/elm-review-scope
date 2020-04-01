@@ -4,9 +4,47 @@ Provides a helper for [`elm-review`](https://package.elm-lang.org/packages/jfmen
 
 The `Scope` module collects information about where a variable comes from. It answers questions like "Was `foo` defined in the current module? If not, which module does it come from?". `Scope` looks at dependencies and other imported modules to give you the best answer, and follows import aliases.
 
+This module is designed to work `jfmengels/elm-review` version `2.x.y`.
+
+## The problem
+
+Say you want to write a rule forbidding the use of a function, like `Html.map`.
+You would look for expressions like `Expression.FunctionOrValue [ "Html" ] "map"` and report them.
+
+What if the `map` was imported using `import Html exposing (map)`?
+Then the rule would not detect the function use.
+Basically you wish to report at least all of the following patterns:
+
+```elm
+import Html
+a = Html.map someHtml
+
+----
+import Html exposing (map)
+a = map someHtml
+
+----
+import Html exposing (..)
+a = map someHtml
+
+----
+import Html as H
+a = H.map someHtml
+
+-- but not
+import Html exposing (..)
+map = someThing
+a = map someHtml
+```
+
+Doing so requires a lot of tedious tracking of imports and variables declarations.
+The `Scope` module handles this all automatically for you
+
+
 ## Documentation
 
 You can view the docs at https://elm-doc-preview.netlify.com/?repo=jfmengels/elm-review-scope. (TODO: Need to publish `elm-review` v2 for this link to work. In the meantime, I recommend looking at the source code.)
+
 
 ## Example use for modules rules
 
