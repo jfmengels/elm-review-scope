@@ -38,7 +38,7 @@ a = map someHtml
 ```
 
 Doing so requires a lot of tedious tracking of imports and variables declarations.
-The `Scope` module handles this all automatically for you
+The `Scope` module handles all of this automatically for you.
 
 
 ## Documentation
@@ -50,12 +50,14 @@ You can view the docs at https://elm-doc-preview.netlify.com/?repo=jfmengels/elm
 
 **Note**: Because module rules don't have the knowledge of what is exposed in the modules from the project that are being imported, you will not get the correct answer when you request the `realModuleName` of an element that was imported through `import A exposing (..)` or a type imported through `import A exposing (B(..))`.
 
-If this is important to you, then you should turn your rule into a project rule, which will correctly get this information.
+If this is important to you, then you can either
+- transform your rule into a project rule, which will then correctly get this information.
+- add an import visitor that check whether the package has been imported with `import A exposing (..)` if it's a function, or with `import A exposing (..)` and `import A exposing (B(..))` if it's a type constructor. You can then assume then anytime you find the target function it is the correct one, as the Elm compiler will warn about any ambiguity.
 
 This example forbids using `Html.button` except in the `Button` module.
 
 ```elm
-import Elm.Syntax.Expression exposing (Expression(..))
+import Elm.Syntax.Expression exposing (Expression)
 import Elm.Syntax.Node as Node exposing (Node)
 import Review.Rule as Rule exposing (Direction, Error, Rule)
 import Scope
@@ -63,7 +65,7 @@ import Scope
 rule : Rule
 rule =
     Rule.newModuleRuleSchema "NoHtmlButton" initialContext
-        -- Scope.addModuleVisitors should be added before your own visitors
+        -- Scope.addModuleVisitors needs to be added before your own visitors
         |> Scope.addModuleVisitors
         |> Rule.withExpressionVisitor expressionVisitor
         |> Rule.fromModuleRuleSchema
@@ -84,7 +86,7 @@ initialContext =
 expressionVisitor : Node Expression -> Direction -> Context -> ( List (Error {}), Context )
 expressionVisitor node direction context =
     case ( direction, Node.value node ) of
-        ( Rule.OnEnter, FunctionOrValue moduleName "button" ) ->
+        ( Rule.OnEnter, Expression.FunctionOrValue moduleName "button" ) ->
             if Scope.realModuleName context.scope "button" moduleName == [ "Html" ] then
                 ( [ Rule.error
                         { message = "Do not use `Html.button` directly"
