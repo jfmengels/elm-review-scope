@@ -1,7 +1,7 @@
 {
     "type": "package",
     "name": "jfmengels/elm-review-scope",
-    "summary": "DO NOT PUBLISH! Provides elm-review rules to detect unused functions and types",
+    "summary": "DO NOT PUBLISH elm-review helpers that automatically collects scope information",
     "license": "BSD-3-Clause",
     "version": "0.0.0",
     "exposed-modules": [
