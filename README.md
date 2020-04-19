@@ -43,7 +43,7 @@ The `Scope` module handles this all automatically for you
 
 ## Documentation
 
-You can view the docs at https://elm-doc-preview.netlify.com/?repo=jfmengels/elm-review-scope. (TODO: Need to publish `elm-review` v2 for this link to work. In the meantime, I recommend looking at the source code.)
+You can view the docs at https://elm-doc-preview.netlify.com/?repo=jfmengels/elm-review-scope.
 
 
 ## Example use for modules rules
