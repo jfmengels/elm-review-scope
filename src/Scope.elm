@@ -586,45 +586,58 @@ declarationListVisitor declarations innerContext =
 
 registerDeclaration : Node Declaration -> InnerModuleContext -> InnerModuleContext
 registerDeclaration declaration innerContext =
-    case declarationNameNode declaration of
-        Just ( variableType, nameNode ) ->
-            innerContext.scopes
-                |> registerVariable
-                    { variableType = variableType
-                    , node = nameNode
-                    }
-                    (Node.value nameNode)
-                |> updateScope innerContext
+    let
+        scope : Nonempty Scope
+        scope =
+            List.foldl
+                (\( variableType, nameNode ) accumulatorScope ->
+                    registerVariable
+                        { variableType = variableType
+                        , node = nameNode
+                        }
+                        (Node.value nameNode)
+                        accumulatorScope
+                )
+                innerContext.scopes
+                (declarationNameNode declaration)
+    in
+    updateScope innerContext scope
 
-        Nothing ->
-            innerContext
 
-
-declarationNameNode : Node Declaration -> Maybe ( VariableType, Node String )
+declarationNameNode : Node Declaration -> List ( VariableType, Node String )
 declarationNameNode (Node _ declaration) =
     case declaration of
         Declaration.FunctionDeclaration function ->
-            Just
-                ( TopLevelVariable
-                , function.declaration
+            [ ( TopLevelVariable
+              , function.declaration
                     |> Node.value
                     |> .name
-                )
+              )
+            ]
 
-        Declaration.CustomTypeDeclaration type_ ->
-            Just ( TopLevelVariable, type_.name )
+        Declaration.CustomTypeDeclaration { name, constructors } ->
+            ( TopLevelVariable, name )
+                :: List.map
+                    (\constructor ->
+                        ( CustomTypeConstructor
+                        , constructor
+                            |> Node.value
+                            |> .name
+                        )
+                    )
+                    constructors
 
         Declaration.AliasDeclaration alias_ ->
-            Just ( TopLevelVariable, alias_.name )
+            [ ( TopLevelVariable, alias_.name ) ]
 
         Declaration.PortDeclaration port_ ->
-            Just ( Port, port_.name )
+            [ ( Port, port_.name ) ]
 
         Declaration.InfixDeclaration _ ->
-            Nothing
+            []
 
         Declaration.Destructuring _ _ ->
-            Nothing
+            []
 
 
 registerExposed : Node Declaration -> InnerModuleContext -> InnerModuleContext
@@ -923,6 +936,7 @@ type alias VariableInfo =
 
 type VariableType
     = TopLevelVariable
+    | CustomTypeConstructor
     | FunctionParameter
     | LetVariable
     | PatternVariable

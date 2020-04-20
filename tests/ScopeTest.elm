@@ -98,9 +98,14 @@ import Html exposing (..)
 import Http exposing (get)
 
 localValue = 1
+localValueValueToBeShadowed = 1
+type Msg = SomeMsgToBeShadowed
 
 a : SomeCustomType -> SomeTypeAlias -> SomeOtherTypeAlias -> NonExposedCustomType
 a = localValue
+    localValueValueToBeShadowed
+    SomeMsgToBeShadowed
+    SomeOtherMsg
     unknownValue
     exposedElement
     nonExposedElement
@@ -124,7 +129,9 @@ nonExposedElement = 2
 """, """module ExposesEverything exposing (..)
 type SomeCustomType = VariantA | VariantB
 type alias SomeTypeAlias = {}
+type Msg = SomeMsgToBeShadowed | SomeOtherMsg
 elementFromExposesEverything = 1
+localValueValueToBeShadowed = 1
 """ ]
                     |> Review.Test.runOnModulesWithProjectData project projectRule
                     |> Review.Test.expectErrorsForModules
@@ -136,6 +143,9 @@ elementFromExposesEverything = 1
 <nothing>.SomeOtherTypeAlias -> ExposesSomeThings.SomeOtherTypeAlias
 <nothing>.NonExposedCustomType -> <nothing>.NonExposedCustomType
 <nothing>.localValue -> <nothing>.localValue
+<nothing>.localValueValueToBeShadowed -> <nothing>.localValueValueToBeShadowed
+<nothing>.SomeMsgToBeShadowed -> <nothing>.SomeMsgToBeShadowed
+<nothing>.SomeOtherMsg -> ExposesEverything.SomeOtherMsg
 <nothing>.unknownValue -> <nothing>.unknownValue
 <nothing>.exposedElement -> ExposesSomeThings.exposedElement
 <nothing>.nonExposedElement -> <nothing>.nonExposedElement
