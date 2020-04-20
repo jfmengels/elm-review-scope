@@ -1134,7 +1134,33 @@ findInList predicate list =
 -- ACCESS
 
 
-{-| TODO
+{-| Get the name of the module where a function or type was defined.
+
+  - The second argument (`String`) is the function name
+  - The third argument (`List String`) is the module name that was used next to the function name where you found it
+
+If the element was defined in the current module, then the result will be `[]`.
+
+    expressionVisitor : Node Expression -> Direction -> Context -> ( List (Error {}), Context )
+    expressionVisitor node direction context =
+        case ( direction, Node.value node ) of
+            ( Rule.OnEnter, Expression.FunctionOrValue moduleName "button" ) ->
+                if Scope.realModuleName context.scope "button" moduleName == [ "Html" ] then
+                    ( [ createError node ], context )
+
+                else
+                    ( [], context )
+
+            _ ->
+                ( [], context )
+
+**Known problems**:
+
+  - Does not make the distinction between types and functions/values/custom type constructors.
+    This will likely warrant splitting this function into two later on.
+
+Help is welcome!
+
 -}
 realModuleName : ModuleContext -> String -> List String -> List String
 realModuleName (ModuleContext context) functionOrType moduleName =
