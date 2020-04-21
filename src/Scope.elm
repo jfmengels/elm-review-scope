@@ -1207,6 +1207,13 @@ realModuleName (ModuleContext context) functionOrType moduleName =
 isDeclaredInModule : String -> Elm.Docs.Module -> Bool
 isDeclaredInModule functionOrType module_ =
     List.any (.name >> (==) functionOrType) module_.values
+        || List.any (.name >> (==) functionOrType) module_.aliases
+        || List.any
+            (\union ->
+                (union.name == functionOrType)
+                    || List.any (Tuple.first >> (==) functionOrType) union.tags
+            )
+            module_.unions
 
 
 isInScope : String -> Nonempty Scope -> Bool

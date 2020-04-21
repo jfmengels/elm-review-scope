@@ -110,6 +110,9 @@ a = localValue
     SomeOtherMsg
     Something.b
     Something.c
+    Something.BAlias
+    Something.Foo
+    Something.Bar
     unknownValue
     exposedElement
     nonExposedElement
@@ -138,6 +141,8 @@ elementFromExposesEverything = 1
 localValueValueToBeShadowed = 1
 """, """module Something.B exposing (..)
 b = 1
+type Foo = Bar
+type alias BAlias = {}
 """, """module Something.C exposing (..)
 c = 1
 """ ]
@@ -156,6 +161,9 @@ c = 1
 <nothing>.SomeOtherMsg -> ExposesEverything.SomeOtherMsg
 Something.b -> Something.B.b
 Something.c -> Something.C.c
+Something.BAlias -> Something.B.BAlias
+Something.Foo -> Something.B.Foo
+Something.Bar -> Something.B.Bar
 <nothing>.unknownValue -> <nothing>.unknownValue
 <nothing>.exposedElement -> ExposesSomeThings.exposedElement
 <nothing>.nonExposedElement -> <nothing>.nonExposedElement
