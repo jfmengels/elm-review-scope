@@ -48,11 +48,14 @@ You can view the docs at https://elm-doc-preview.netlify.com/?repo=jfmengels/elm
 
 ## Example use for modules rules
 
-**Note**: Because module rules don't have the knowledge of what is exposed in the modules from the project that are being imported, you will not get the correct answer when you request the `realModuleName` of an element that was imported through `import A exposing (..)` or a type imported through `import A exposing (B(..))`.
+**Note**: Because module rules don't have the knowledge of what is exposed in the modules from the project that are being imported, you will not get the correct answer when you request the `realModuleName` of
+1. an element that was imported through `import A exposing (..)`
+2. a type imported through `import A exposing (B(..))`
+3. a qualified import whose module name points to several modules, e.g. `import X ; import Bar as X ; value = X.a` (which module does `a` really come from?)
 
 If this is important to you, then you can either
-- transform your rule into a project rule, which will then correctly get this information.
-- add an import visitor that check whether the package has been imported with `import A exposing (..)` if it's a function, or with `import A exposing (..)` and `import A exposing (B(..))` if it's a type constructor. You can then assume then anytime you find the target function it is the correct one, as the Elm compiler will warn about any ambiguity.
+- transform your rule into a project rule, which will then correctly get this information. (WIP Not yet addressed for problem 3)
+- (for problems 1. and 2.) add an import visitor that check whether the package has been imported with `import A exposing (..)` if it's a function, or with `import A exposing (..)` and `import A exposing (B(..))` if it's a type constructor. You can then assume then anytime you find the target function it is the correct one, as the Elm compiler will warn about any ambiguity.
 
 This example forbids using `Html.button` except in the `Button` module.
 
