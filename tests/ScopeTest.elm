@@ -96,6 +96,8 @@ import ExposesEverything exposing (..)
 import Foo.Bar
 import Html exposing (..)
 import Http exposing (get)
+import Something.B as Something
+import Something.C as Something
 
 localValue = 1
 localValueValueToBeShadowed = 1
@@ -106,6 +108,8 @@ a = localValue
     localValueValueToBeShadowed
     SomeMsgToBeShadowed
     SomeOtherMsg
+    Something.b
+    Something.c
     unknownValue
     exposedElement
     nonExposedElement
@@ -132,6 +136,10 @@ type alias SomeTypeAlias = {}
 type Msg = SomeMsgToBeShadowed | SomeOtherMsg
 elementFromExposesEverything = 1
 localValueValueToBeShadowed = 1
+""", """module Something.B exposing (..)
+b = 1
+""", """module Something.C exposing (..)
+c = 1
 """ ]
                     |> Review.Test.runOnModulesWithProjectData project projectRule
                     |> Review.Test.expectErrorsForModules
@@ -146,6 +154,8 @@ localValueValueToBeShadowed = 1
 <nothing>.localValueValueToBeShadowed -> <nothing>.localValueValueToBeShadowed
 <nothing>.SomeMsgToBeShadowed -> <nothing>.SomeMsgToBeShadowed
 <nothing>.SomeOtherMsg -> ExposesEverything.SomeOtherMsg
+Something.b -> Something.B.b
+Something.c -> Something.C.c
 <nothing>.unknownValue -> <nothing>.unknownValue
 <nothing>.exposedElement -> ExposesSomeThings.exposedElement
 <nothing>.nonExposedElement -> <nothing>.nonExposedElement
@@ -175,6 +185,22 @@ Http.get -> Http.get
                             ]
                           )
                         , ( "ExposesEverything"
+                          , [ Review.Test.error
+                                { message = ""
+                                , details = [ "details" ]
+                                , under = "module"
+                                }
+                            ]
+                          )
+                        , ( "Something.B"
+                          , [ Review.Test.error
+                                { message = ""
+                                , details = [ "details" ]
+                                , under = "module"
+                                }
+                            ]
+                          )
+                        , ( "Something.C"
                           , [ Review.Test.error
                                 { message = ""
                                 , details = [ "details" ]
