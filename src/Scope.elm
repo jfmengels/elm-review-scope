@@ -27,6 +27,8 @@ module Scope exposing
 
 {- Copied over from https://github.com/jfmengels/elm-review-scope
 
+   Version: 0.1.0
+
    Copyright (c) 2020, Jeroen Engels
    All rights reserved.
 
