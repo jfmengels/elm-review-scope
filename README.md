@@ -203,7 +203,13 @@ If the module gets exposed as part of a review package, then if another package 
 
 ## How you are supposed to use this package
 
-The way to use this is to copy and paste the `Scope` module into your project.
+The way to use this is to copy and paste the `Scope` module into your project or review configuration directory.
+
+You also need to install the following dependencies:
+
+```bash
+elm install elm/project-metadata-utils # 1.0.0 <= v < 2.0.0
+```
 
 I would really like you to **NOT publish this as a package**, and to **NOT expose this module** as part of your package. It is alright to publish a package using and containing this module, but without exposing it. Otherwise, we'll run into problem n°3 again.
 
