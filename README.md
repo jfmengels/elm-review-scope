@@ -1,6 +1,6 @@
 # elm-review-scope
 
-Temporary version: `0.1.0`.
+Temporary version: `0.1.1`.
 
 Provides a helper for [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) that automatically collects information about the scope.
 
