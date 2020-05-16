@@ -14,7 +14,7 @@ import Test exposing (Test, test)
 all : Test
 all =
     Test.describe "Scope.moduleNameForType"
-        [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
+        [ test "should return the module that defined the type" <|
             \() ->
                 [ """module A exposing (..)
 import Bar as Baz exposing (baz)
@@ -53,7 +53,7 @@ type alias BAlias = {}
                           , [ Review.Test.error
                                 { message = """
 <nothing>.Bool -> Basics.Bool
-<nothing>.Maybe -> Basics.Maybe
+<nothing>.Maybe -> Maybe.Maybe
 <nothing>.A -> <nothing>.A
 <nothing>.Role -> <nothing>.Role
 <nothing>.Msg -> ExposesEverything.Msg
@@ -64,30 +64,6 @@ type alias BAlias = {}
 <nothing>.SomeOtherTypeAlias -> ExposesSomeThings.SomeOtherTypeAlias
 <nothing>.NonExposedCustomType -> <nothing>.NonExposedCustomType
 """
-                                , details = [ "details" ]
-                                , under = "module"
-                                }
-                            ]
-                          )
-                        , ( "ExposesSomeThings"
-                          , [ Review.Test.error
-                                { message = ""
-                                , details = [ "details" ]
-                                , under = "module"
-                                }
-                            ]
-                          )
-                        , ( "ExposesEverything"
-                          , [ Review.Test.error
-                                { message = ""
-                                , details = [ "details" ]
-                                , under = "module"
-                                }
-                            ]
-                          )
-                        , ( "Something.B"
-                          , [ Review.Test.error
-                                { message = ""
                                 , details = [ "details" ]
                                 , under = "module"
                                 }
@@ -134,7 +110,6 @@ moduleVisitor : Rule.ModuleRuleSchema schemaState ModuleContext -> Rule.ModuleRu
 moduleVisitor schema =
     schema
         |> Rule.withDeclarationVisitor declarationVisitor
-        --|> Rule.withExpressionVisitor expressionVisitor
         |> Rule.withFinalModuleEvaluation finalEvaluation
 
 
@@ -213,11 +188,15 @@ typeAnnotationNames scope typeAnnotation =
 
 finalEvaluation : ModuleContext -> List (Error {})
 finalEvaluation context =
-    [ Rule.error
-        { message = "\n" ++ String.join "\n" context.texts ++ "\n"
-        , details = [ "details" ]
-        }
-        { start = { row = 1, column = 1 }
-        , end = { row = 1, column = 7 }
-        }
-    ]
+    if List.isEmpty context.texts then
+        []
+
+    else
+        [ Rule.error
+            { message = "\n" ++ String.join "\n" context.texts ++ "\n"
+            , details = [ "details" ]
+            }
+            { start = { row = 1, column = 1 }
+            , end = { row = 1, column = 7 }
+            }
+        ]
