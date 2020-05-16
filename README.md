@@ -1,6 +1,6 @@
 # elm-review-scope
 
-Current version: `0.1.1`.
+Current version: `0.2.0`.
 
 Provides a helper for [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) that automatically collects information about the scope.
 
@@ -47,10 +47,49 @@ The `Scope` module handles all of this automatically for you.
 
 You can view the docs at https://elm-doc-preview.netlify.com/?repo=jfmengels/elm-review-scope.
 
+### moduleNameForValue
+
+Get the name of the module that exposed a function, constant, custom type constructor or type alias.
+
+### moduleNameForType
+
+Get the name of the module that exposed a custom type or type alias.
+
+It is used similarly to `moduleNameForValue`, but `moduleNameForType` will look for types with the given name.
+The difference is necessary because depending on whether you look at an expression or a type, the result will be different.
+
+Example:
+```elm
+module A exposing (A(..))
+type A = B | C
+
+----
+
+module B exposing (B(..))
+type B = Something
+
+----
+
+module Main exposing (..)
+import A exposing (..)
+import B exposing (..)
+
+valueOfTypeA : A
+valueOfTypeA = B
+
+valueOfTypeB : B
+valueOfTypeB = Something
+```
+
+When looking at `valueOfTypeA = B`, the `B` is an custom type constructor defined in module `A`.
+When looking at `valueOfTypeB : B`, the `B` is a (custom) type defined in module `B`.
+
+In the former situation, `B` is in the realm of values, so you should use `moduleNameForValue`.
+In the latter situation, `B` is in the realm of types, so you should use `moduleNameForType`. 
 
 ## Example use for modules rules
 
-**Note**: Because module rules don't have the knowledge of what is exposed in the modules from the project that are being imported, you will not get the correct answer when you request the `moduleNameForFunction` of
+**Note**: Because module rules don't have the knowledge of what is exposed in the modules from the project that are being imported, you will not get the correct answer when you request the `moduleNameForValue`/`moduleNameForType` of
 1. an element that was imported through `import A exposing (..)`
 2. a type imported through `import A exposing (B(..))`
 3. a qualified import whose module name points to several modules, e.g. `import X ; import Bar as X ; value = X.a` (which module does `a` really come from?)
@@ -92,7 +131,7 @@ expressionVisitor : Node Expression -> Direction -> Context -> ( List (Error {})
 expressionVisitor node direction context =
     case ( direction, Node.value node ) of
         ( Rule.OnEnter, Expression.FunctionOrValue moduleName "button" ) ->
-            if Scope.moduleNameForFunction context.scope "button" moduleName == [ "Html" ] then
+            if Scope.moduleNameForValue context.scope "button" moduleName == [ "Html" ] then
                 ( [ Rule.error
                         { message = "Do not use `Html.button` directly"
                         , details = [ "At fruits.com, we've built a nice `Button` module that suits our needs better. Using this module instead of `Html.button` ensures we have a consistent button experience across the website." ]

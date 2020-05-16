@@ -27,7 +27,7 @@ module Scope exposing
 
 {- Copied over from https://github.com/jfmengels/elm-review-scope
 
-   Version: 0.1.1
+   Version: 0.2.0
 
    Copyright (c) 2020, Jeroen Engels
    All rights reserved.
@@ -1197,10 +1197,11 @@ findInList predicate list =
 -- ACCESS
 
 
-{-| Get the name of the module where a function or type was defined.
+{-| Get the name of the module where a value was defined.
+A value can be either a function, a constant, a custom type constructor or a type alias (used as a function).
 
-  - The second argument (`String`) is the function name
-  - The third argument (`List String`) is the module name that was used next to the function name where you found it
+  - The second argument (`String`) is the name of the value
+  - The third argument (`List String`) is the module name that was used next to the value's name where you found it
 
 If the element was defined in the current module, then the result will be `[]`.
 
@@ -1208,7 +1209,7 @@ If the element was defined in the current module, then the result will be `[]`.
     expressionVisitor node direction context =
         case ( direction, Node.value node ) of
             ( Rule.OnEnter, Expression.FunctionOrValue moduleName "button" ) ->
-                if Scope.realModuleName context.scope "button" moduleName == [ "Html" ] then
+                if Scope.moduleNameForValue context.scope "button" moduleName == [ "Html" ] then
                     ( [ createError node ], context )
 
                 else
@@ -1216,13 +1217,6 @@ If the element was defined in the current module, then the result will be `[]`.
 
             _ ->
                 ( [], context )
-
-**Known problems**:
-
-  - Does not make the distinction between types and functions/values/custom type constructors.
-    This will likely warrant splitting this function into two later on.
-
-Help is welcome!
 
 -}
 moduleNameForValue : ModuleContext -> String -> List String -> List String
@@ -1268,6 +1262,13 @@ moduleNameForValue (ModuleContext context) valueName moduleName =
             moduleName
 
 
+{-| Get the name of the module where a type was defined.
+A type can be either a custom type or a type alias.
+
+  - The second argument (`String`) is the name of the type
+  - The third argument (`List String`) is the module name that was used next to the type name where you found it
+
+-}
 moduleNameForType : ModuleContext -> String -> List String -> List String
 moduleNameForType (ModuleContext context) typeName moduleName =
     case moduleName of

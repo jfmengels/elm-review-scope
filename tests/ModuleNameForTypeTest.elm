@@ -1,7 +1,6 @@
 module ModuleNameForTypeTest exposing (all)
 
 import Elm.Syntax.Declaration as Declaration exposing (Declaration)
-import Elm.Syntax.Expression as Expression exposing (Expression)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
 import Fixtures.Dependencies as Dependencies
@@ -138,14 +137,6 @@ projectRule =
         |> Rule.fromProjectRuleSchema
 
 
-moduleRule : Rule
-moduleRule =
-    Rule.newModuleRuleSchema "TestRule" { scope = Scope.initialModuleContext, texts = [] }
-        |> Scope.addModuleVisitors
-        |> moduleVisitor
-        |> Rule.fromModuleRuleSchema
-
-
 moduleVisitor : Rule.ModuleRuleSchema schemaState ModuleContext -> Rule.ModuleRuleSchema { schemaState | hasAtLeastOneVisitor : () } ModuleContext
 moduleVisitor schema =
     schema
@@ -225,35 +216,6 @@ typeAnnotationNames scope typeAnnotation =
 
         TypeAnnotation.FunctionTypeAnnotation arg returnType ->
             typeAnnotationNames scope arg ++ typeAnnotationNames scope returnType
-
-
-expressionVisitor : Node Expression -> Rule.Direction -> ModuleContext -> ( List nothing, ModuleContext )
-expressionVisitor node direction context =
-    case ( direction, Node.value node ) of
-        ( Rule.OnEnter, Expression.FunctionOrValue moduleName name ) ->
-            let
-                nameInCode : String
-                nameInCode =
-                    case moduleName of
-                        [] ->
-                            "<nothing>." ++ name
-
-                        _ ->
-                            String.join "." moduleName ++ "." ++ name
-
-                realName : String
-                realName =
-                    case Scope.moduleNameForType context.scope name moduleName of
-                        [] ->
-                            "<nothing>." ++ name
-
-                        moduleName_ ->
-                            String.join "." moduleName_ ++ "." ++ name
-            in
-            ( [], { context | texts = context.texts ++ [ nameInCode ++ " -> " ++ realName ] } )
-
-        _ ->
-            ( [], context )
 
 
 finalEvaluation : ModuleContext -> List (Error {})
