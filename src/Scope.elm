@@ -822,7 +822,23 @@ registerImportAlias : Import -> InnerModuleContext -> InnerModuleContext
 registerImportAlias import_ innerContext =
     case import_.moduleAlias of
         Nothing ->
-            innerContext
+            let
+                moduleName : List String
+                moduleName =
+                    Node.value import_.moduleName
+            in
+            case moduleName of
+                singleSegmentModuleName :: [] ->
+                    { innerContext
+                        | importAliases =
+                            Dict.update
+                                singleSegmentModuleName
+                                (\previousValue -> Just <| moduleName :: Maybe.withDefault [] previousValue)
+                                innerContext.importAliases
+                    }
+
+                _ ->
+                    innerContext
 
         Just alias_ ->
             { innerContext
