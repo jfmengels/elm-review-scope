@@ -589,57 +589,66 @@ declarationListVisitor declarations innerContext =
 registerDeclaration : Node Declaration -> InnerModuleContext -> InnerModuleContext
 registerDeclaration declaration innerContext =
     let
-        scope : Nonempty Scope
-        scope =
-            List.foldl
-                (\( variableType, nameNode ) accumulatorScope ->
-                    registerVariable
-                        { variableType = variableType
-                        , node = nameNode
-                        }
-                        (Node.value nameNode)
-                        accumulatorScope
-                )
+        addToScope : { variableType : VariableType, node : Node String } -> Nonempty Scope
+        addToScope variableData =
+            registerVariable
+                variableData
+                (Node.value variableData.node)
                 innerContext.scopes
-                (declarationNameNode declaration)
     in
-    updateScope innerContext scope
-
-
-declarationNameNode : Node Declaration -> List ( VariableType, Node String )
-declarationNameNode (Node _ declaration) =
-    case declaration of
+    case Node.value declaration of
         Declaration.FunctionDeclaration function ->
-            [ ( TopLevelVariable
-              , function.declaration
-                    |> Node.value
-                    |> .name
-              )
-            ]
-
-        Declaration.CustomTypeDeclaration { name, constructors } ->
-            ( TopLevelVariable, name )
-                :: List.map
-                    (\constructor ->
-                        ( CustomTypeConstructor
-                        , constructor
-                            |> Node.value
-                            |> .name
-                        )
-                    )
-                    constructors
+            addToScope
+                { variableType = TopLevelVariable
+                , node =
+                    function.declaration
+                        |> Node.value
+                        |> .name
+                }
+                |> updateScope innerContext
 
         Declaration.AliasDeclaration alias_ ->
-            [ ( TopLevelVariable, alias_.name ) ]
+            -- TODO add to local types too
+            addToScope
+                { variableType = TopLevelVariable
+                , node = alias_.name
+                }
+                |> updateScope innerContext
 
-        Declaration.PortDeclaration port_ ->
-            [ ( Port, port_.name ) ]
+        Declaration.CustomTypeDeclaration { name, constructors } ->
+            -- TODO add to local types
+            List.foldl
+                (\constructor scope ->
+                    let
+                        constructorName =
+                            constructor |> Node.value |> .name
+                    in
+                    registerVariable
+                        { variableType = CustomTypeConstructor
+                        , node = constructorName
+                        }
+                        (Node.value constructorName)
+                        scope
+                )
+                innerContext.scopes
+                constructors
+                |> updateScope innerContext
+
+        Declaration.PortDeclaration signature ->
+            addToScope
+                { variableType = Port
+                , node = signature.name
+                }
+                |> updateScope innerContext
 
         Declaration.InfixDeclaration _ ->
-            []
+            -- Scope doesn't support operators at the moment.
+            -- I could use help adding this.
+            innerContext
 
         Declaration.Destructuring _ _ ->
-            []
+            -- Not possible in 0.19 code
+            innerContext
 
 
 registerExposed : Node Declaration -> InnerModuleContext -> InnerModuleContext
