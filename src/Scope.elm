@@ -2,7 +2,7 @@ module Scope exposing
     ( ModuleContext, addModuleVisitors, initialModuleContext
     , ProjectContext, addProjectVisitors
     , initialProjectContext, fromProjectToModule, fromModuleToProject, foldProjectContexts
-    , moduleNameForValue
+    , moduleNameForValue, moduleNameForType
     )
 
 {-| Collect and infer information automatically for you
@@ -21,7 +21,7 @@ module Scope exposing
 
 # Access
 
-@docs moduleNameForValue
+@docs moduleNameForValue, moduleNameForType
 
 -}
 
@@ -1205,6 +1205,11 @@ moduleNameForValue (ModuleContext context) functionOrType moduleName =
 
         _ ->
             moduleName
+
+
+moduleNameForType : ModuleContext -> String -> List String -> List String
+moduleNameForType (ModuleContext context) functionOrType moduleName =
+    []
 
 
 isDeclaredInModule : String -> Elm.Docs.Module -> Bool
