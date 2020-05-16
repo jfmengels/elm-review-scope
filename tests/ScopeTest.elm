@@ -15,14 +15,14 @@ import Test exposing (Test, test)
 all : Test
 all =
     Test.describe "Scope"
-        [ moduleNameForValueTestsForModuleRule
-        , moduleNameForValueTestsForProjectRule
+        [ realModuleNameTestsForModuleRule
+        , realModuleNameTestsForProjectRule
         ]
 
 
-moduleNameForValueTestsForModuleRule : Test
-moduleNameForValueTestsForModuleRule =
-    Test.describe "Scope.moduleNameForValue (module rule)"
+realModuleNameTestsForModuleRule : Test
+realModuleNameTestsForModuleRule =
+    Test.describe "Scope.realModuleName (module rule)"
         [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
             \() ->
                 """module A exposing (..)
@@ -35,7 +35,6 @@ import Http exposing (get)
 
 localValue = 1
 
-a : SomeCustomType -> SomeTypeAlias -> SomeOtherTypeAlias -> NonExposedCustomType
 a = localValue
     unknownValue
     exposedElement
@@ -57,10 +56,6 @@ a = localValue
                     |> Review.Test.expectErrors
                         [ Review.Test.error
                             { message = """
-<nothing>.SomeCustomType -> <nothing>.SomeCustomType
-<nothing>.SomeTypeAlias -> <nothing>.SomeTypeAlias
-<nothing>.SomeOtherTypeAlias -> <nothing>.SomeOtherTypeAlias
-<nothing>.NonExposedCustomType -> <nothing>.NonExposedCustomType
 <nothing>.localValue -> <nothing>.localValue
 <nothing>.unknownValue -> <nothing>.unknownValue
 <nothing>.exposedElement -> <nothing>.exposedElement
@@ -84,9 +79,9 @@ Http.get -> Http.get
         ]
 
 
-moduleNameForValueTestsForProjectRule : Test
-moduleNameForValueTestsForProjectRule =
-    Test.describe "Scope.moduleNameForValue (project rule)"
+realModuleNameTestsForProjectRule : Test
+realModuleNameTestsForProjectRule =
+    Test.describe "Scope.realModuleName (project rule)"
         [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
             \() ->
                 [ """module A exposing (..)
@@ -103,7 +98,6 @@ localValue = 1
 localValueValueToBeShadowed = 1
 type Msg = SomeMsgToBeShadowed
 
-a : SomeCustomType -> SomeTypeAlias -> SomeOtherTypeAlias -> NonExposedCustomType
 a = localValue
     localValueValueToBeShadowed
     SomeMsgToBeShadowed
@@ -151,10 +145,6 @@ c = 1
                         [ ( "A"
                           , [ Review.Test.error
                                 { message = """
-<nothing>.SomeCustomType -> ExposesEverything.SomeCustomType
-<nothing>.SomeTypeAlias -> ExposesEverything.SomeTypeAlias
-<nothing>.SomeOtherTypeAlias -> ExposesSomeThings.SomeOtherTypeAlias
-<nothing>.NonExposedCustomType -> <nothing>.NonExposedCustomType
 <nothing>.localValue -> <nothing>.localValue
 <nothing>.localValueValueToBeShadowed -> <nothing>.localValueValueToBeShadowed
 <nothing>.SomeMsgToBeShadowed -> <nothing>.SomeMsgToBeShadowed
@@ -264,24 +254,8 @@ moduleRule =
 moduleVisitor : Rule.ModuleRuleSchema schemaState ModuleContext -> Rule.ModuleRuleSchema { schemaState | hasAtLeastOneVisitor : () } ModuleContext
 moduleVisitor schema =
     schema
-        |> Rule.withDeclarationVisitor declarationVisitor
         |> Rule.withExpressionVisitor expressionVisitor
         |> Rule.withFinalModuleEvaluation finalEvaluation
-
-
-declarationVisitor : Node Declaration -> Rule.Direction -> ModuleContext -> ( List nothing, ModuleContext )
-declarationVisitor node direction context =
-    case ( direction, Node.value node ) of
-        ( Rule.OnEnter, Declaration.FunctionDeclaration function ) ->
-            case function.signature |> Maybe.map (Node.value >> .typeAnnotation) of
-                Nothing ->
-                    ( [], context )
-
-                Just typeAnnotation ->
-                    ( [], { context | text = context.text ++ "\n" ++ typeAnnotationNames context.scope typeAnnotation } )
-
-        _ ->
-            ( [], context )
 
 
 typeAnnotationNames : Scope.ModuleContext -> Node TypeAnnotation -> String
@@ -304,7 +278,7 @@ typeAnnotationNames scope typeAnnotation =
 
                 realName : String
                 realName =
-                    case Scope.moduleNameForValue scope typeName moduleName of
+                    case Scope.realModuleName scope typeName moduleName of
                         [] ->
                             "<nothing>." ++ typeName
 
@@ -345,7 +319,7 @@ expressionVisitor node direction context =
 
                 realName : String
                 realName =
-                    case Scope.moduleNameForValue context.scope name moduleName of
+                    case Scope.realModuleName context.scope name moduleName of
                         [] ->
                             "<nothing>." ++ name
 

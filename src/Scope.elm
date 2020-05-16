@@ -91,7 +91,8 @@ type ModuleContext
 type alias InnerModuleContext =
     { scopes : Nonempty Scope
     , importAliases : Dict String (List ModuleName)
-    , importedFunctionOrTypes : Dict String (List String)
+    , importedFunctions : Dict String (List String)
+    , importedTypes : Dict String (List String)
     , dependenciesModules : Dict String Elm.Docs.Module
     , modules : Dict ModuleName Elm.Docs.Module
     , exposesEverything : Bool
@@ -192,7 +193,8 @@ fromProjectToModule : ProjectContext -> ModuleContext
 fromProjectToModule (ProjectContext projectContext) =
     { scopes = nonemptyList_fromElement emptyScope
     , importAliases = Dict.empty
-    , importedFunctionOrTypes = Dict.empty
+    , importedFunctions = Dict.empty
+    , importedTypes = Dict.empty
     , dependenciesModules = projectContext.dependenciesModules
     , modules = projectContext.modules
     , exposesEverything = False
@@ -701,7 +703,7 @@ registerExposedCustomType constructors name innerContext =
 
 
 registerExposedTypeAlias : Elm.Syntax.TypeAlias.TypeAlias -> String -> InnerModuleContext -> InnerModuleContext
-registerExposedTypeAlias constructors name innerContext =
+registerExposedTypeAlias alias_ name innerContext =
     { innerContext
         | exposedAliases =
             { name = name
@@ -874,8 +876,7 @@ registerImportExposed import_ innerContext =
                             List.concat
                                 [ List.concatMap
                                     (\union ->
-                                        nameWithModuleName union
-                                            :: List.map (\( name, _ ) -> ( name, moduleName )) union.tags
+                                        List.map (\( name, _ ) -> ( name, moduleName )) union.tags
                                     )
                                     module_.unions
                                 , List.map nameWithModuleName module_.values
@@ -883,10 +884,18 @@ registerImportExposed import_ innerContext =
                                 , List.map nameWithModuleName module_.binops
                                 ]
                                 |> Dict.fromList
+
+                        exposedTypes : Dict String (List String)
+                        exposedTypes =
+                            List.concat
+                                [ List.map nameWithModuleName module_.unions
+                                , List.map nameWithModuleName module_.aliases
+                                ]
+                                |> Dict.fromList
                     in
                     { innerContext
-                        | importedFunctionOrTypes =
-                            Dict.union innerContext.importedFunctionOrTypes exposedValues
+                        | importedFunctions = Dict.union innerContext.importedFunctions exposedValues
+                        , importedTypes = Dict.union innerContext.importedTypes exposedTypes
                     }
 
                 Exposing.Explicit topLevelExposeList ->
@@ -894,18 +903,25 @@ registerImportExposed import_ innerContext =
                         exposedValues : Dict String (List String)
                         exposedValues =
                             topLevelExposeList
-                                |> List.concatMap (namesFromExposingList module_)
+                                |> List.concatMap (valuesFromExposingList module_)
+                                |> List.map (\name -> ( name, moduleName ))
+                                |> Dict.fromList
+
+                        exposedTypes : Dict String (List String)
+                        exposedTypes =
+                            topLevelExposeList
+                                |> List.filterMap typesFromExposingList
                                 |> List.map (\name -> ( name, moduleName ))
                                 |> Dict.fromList
                     in
                     { innerContext
-                        | importedFunctionOrTypes =
-                            Dict.union innerContext.importedFunctionOrTypes exposedValues
+                        | importedFunctions = Dict.union innerContext.importedFunctions exposedValues
+                        , importedTypes = Dict.union innerContext.importedTypes exposedTypes
                     }
 
 
-namesFromExposingList : Elm.Docs.Module -> Node TopLevelExpose -> List String
-namesFromExposingList module_ topLevelExpose =
+valuesFromExposingList : Elm.Docs.Module -> Node TopLevelExpose -> List String
+valuesFromExposingList module_ topLevelExpose =
     case Node.value topLevelExpose of
         Exposing.InfixExpose operator ->
             [ operator ]
@@ -913,21 +929,40 @@ namesFromExposingList module_ topLevelExpose =
         Exposing.FunctionExpose function ->
             [ function ]
 
-        Exposing.TypeOrAliasExpose type_ ->
-            [ type_ ]
+        Exposing.TypeOrAliasExpose name ->
+            if List.any (\alias_ -> alias_.name == name) module_.aliases then
+                [ name ]
+
+            else
+                -- Type is a custom type
+                []
 
         Exposing.TypeExpose { name, open } ->
             case open of
                 Just _ ->
-                    name
-                        :: (module_.unions
-                                |> List.filter (\union -> union.name == name)
-                                |> List.concatMap .tags
-                                |> List.map Tuple.first
-                           )
+                    module_.unions
+                        |> List.filter (\union -> union.name == name)
+                        |> List.concatMap .tags
+                        |> List.map Tuple.first
 
                 Nothing ->
-                    [ name ]
+                    []
+
+
+typesFromExposingList : Node TopLevelExpose -> Maybe String
+typesFromExposingList topLevelExpose =
+    case Node.value topLevelExpose of
+        Exposing.InfixExpose _ ->
+            Nothing
+
+        Exposing.FunctionExpose _ ->
+            Nothing
+
+        Exposing.TypeOrAliasExpose name ->
+            Just name
+
+        Exposing.TypeExpose { name } ->
+            Just name
 
 
 unboxProjectContext : ProjectContext -> InnerProjectContext
@@ -1182,7 +1217,7 @@ moduleNameForValue (ModuleContext context) functionOrType moduleName =
                 []
 
             else
-                Dict.get functionOrType context.importedFunctionOrTypes
+                Dict.get functionOrType context.importedFunctions
                     |> Maybe.withDefault []
 
         _ :: [] ->
@@ -1226,7 +1261,7 @@ moduleNameForType (ModuleContext context) functionOrType moduleName =
                 []
 
             else
-                Dict.get functionOrType context.importedFunctionOrTypes
+                Dict.get functionOrType context.importedTypes
                     |> Maybe.withDefault []
 
         _ :: [] ->
