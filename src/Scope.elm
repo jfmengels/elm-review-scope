@@ -76,6 +76,7 @@ import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
 import Elm.Type
 import Review.Project.Dependency as Dependency exposing (Dependency)
 import Review.Rule as Rule exposing (Direction)
+import Set exposing (Set)
 
 
 
@@ -90,6 +91,7 @@ type ModuleContext
 
 type alias InnerModuleContext =
     { scopes : Nonempty Scope
+    , localTypes : Set String
     , importAliases : Dict String (List ModuleName)
     , importedFunctions : Dict String (List String)
     , importedTypes : Dict String (List String)
@@ -192,6 +194,7 @@ initialProjectContext =
 fromProjectToModule : ProjectContext -> ModuleContext
 fromProjectToModule (ProjectContext projectContext) =
     { scopes = nonemptyList_fromElement emptyScope
+    , localTypes = Set.empty
     , importAliases = Dict.empty
     , importedFunctions = Dict.empty
     , importedTypes = Dict.empty
@@ -608,8 +611,7 @@ registerDeclaration declaration innerContext =
                 |> registerIfExposed (registerExposedValue function) (Node.value nameNode)
 
         Declaration.AliasDeclaration alias_ ->
-            -- TODO add to local types too
-            innerContext
+            { innerContext | localTypes = Set.insert (Node.value alias_.name) innerContext.localTypes }
                 |> addToScope
                     { variableType = TopLevelVariable
                     , node = alias_.name
@@ -617,8 +619,6 @@ registerDeclaration declaration innerContext =
                 |> registerIfExposed (registerExposedTypeAlias alias_) (Node.value alias_.name)
 
         Declaration.CustomTypeDeclaration { name, constructors } ->
-            -- TODO add to local types
-            --( TopLevelVariable, name )
             List.foldl
                 (\constructor innerContext_ ->
                     let
@@ -632,7 +632,7 @@ registerDeclaration declaration innerContext =
                         }
                         innerContext_
                 )
-                innerContext
+                { innerContext | localTypes = Set.insert (Node.value name) innerContext.localTypes }
                 constructors
                 |> registerIfExposed (registerExposedCustomType constructors) (Node.value name)
 
@@ -1074,7 +1074,7 @@ collectNamesFromPattern pattern =
 
 
 popScope : Node Expression -> Direction -> InnerModuleContext -> InnerModuleContext
-popScope ((Node range value) as node) direction context =
+popScope node direction context =
     let
         currentScope : Scope
         currentScope =
@@ -1210,14 +1210,14 @@ Help is welcome!
 
 -}
 moduleNameForValue : ModuleContext -> String -> List String -> List String
-moduleNameForValue (ModuleContext context) functionOrType moduleName =
+moduleNameForValue (ModuleContext context) valueName moduleName =
     case moduleName of
         [] ->
-            if isInScope functionOrType context.scopes then
+            if isInScope valueName context.scopes then
                 []
 
             else
-                Dict.get functionOrType context.importedFunctions
+                Dict.get valueName context.importedFunctions
                     |> Maybe.withDefault []
 
         _ :: [] ->
@@ -1231,7 +1231,7 @@ moduleNameForValue (ModuleContext context) functionOrType moduleName =
                             (\aliasedModuleName ->
                                 case Dict.get aliasedModuleName context.modules of
                                     Just module_ ->
-                                        isDeclaredInModule functionOrType module_
+                                        isValueDeclaredInModule valueName module_
 
                                     Nothing ->
                                         False
@@ -1253,15 +1253,14 @@ moduleNameForValue (ModuleContext context) functionOrType moduleName =
 
 
 moduleNameForType : ModuleContext -> String -> List String -> List String
-moduleNameForType (ModuleContext context) functionOrType moduleName =
+moduleNameForType (ModuleContext context) typeName moduleName =
     case moduleName of
         [] ->
-            --context.exposedUnions
-            if isInScope functionOrType context.scopes then
+            if Set.member typeName context.localTypes then
                 []
 
             else
-                Dict.get functionOrType context.importedTypes
+                Dict.get typeName context.importedTypes
                     |> Maybe.withDefault []
 
         _ :: [] ->
@@ -1275,7 +1274,7 @@ moduleNameForType (ModuleContext context) functionOrType moduleName =
                             (\aliasedModuleName ->
                                 case Dict.get aliasedModuleName context.modules of
                                     Just module_ ->
-                                        isDeclaredInModule functionOrType module_
+                                        isTypeDeclaredInModule typeName module_
 
                                     Nothing ->
                                         False
@@ -1296,16 +1295,19 @@ moduleNameForType (ModuleContext context) functionOrType moduleName =
             moduleName
 
 
-isDeclaredInModule : String -> Elm.Docs.Module -> Bool
-isDeclaredInModule functionOrType module_ =
-    List.any (.name >> (==) functionOrType) module_.values
-        || List.any (.name >> (==) functionOrType) module_.aliases
+isValueDeclaredInModule : String -> Elm.Docs.Module -> Bool
+isValueDeclaredInModule valueName module_ =
+    List.any (.name >> (==) valueName) module_.values
+        || List.any (.name >> (==) valueName) module_.aliases
         || List.any
-            (\union ->
-                (union.name == functionOrType)
-                    || List.any (Tuple.first >> (==) functionOrType) union.tags
-            )
+            (\union -> List.any (Tuple.first >> (==) valueName) union.tags)
             module_.unions
+
+
+isTypeDeclaredInModule : String -> Elm.Docs.Module -> Bool
+isTypeDeclaredInModule typeName module_ =
+    List.any (.name >> (==) typeName) module_.aliases
+        || List.any (.name >> (==) typeName) module_.unions
 
 
 isInScope : String -> Nonempty Scope -> Bool
