@@ -1,9 +1,7 @@
-module ScopeTest exposing (all)
+module ModuleNameForValueTest exposing (all)
 
-import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.Expression as Expression exposing (Expression)
 import Elm.Syntax.Node as Node exposing (Node(..))
-import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
 import Fixtures.Dependencies as Dependencies
 import Review.Project as Project exposing (Project)
 import Review.Rule as Rule exposing (Error, Rule)
@@ -22,7 +20,7 @@ all =
 
 realModuleNameTestsForModuleRule : Test
 realModuleNameTestsForModuleRule =
-    Test.describe "Scope.realModuleName (module rule)"
+    Test.describe "Scope.moduleNameForValue (module rule)"
         [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
             \() ->
                 """module A exposing (..)
@@ -81,7 +79,7 @@ Http.get -> Http.get
 
 realModuleNameTestsForProjectRule : Test
 realModuleNameTestsForProjectRule =
-    Test.describe "Scope.realModuleName (project rule)"
+    Test.describe "Scope.moduleNameForValue (project rule)"
         [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
             \() ->
                 [ """module A exposing (..)
@@ -105,7 +103,6 @@ a = localValue
     Something.b
     Something.c
     Something.BAlias
-    Something.Foo
     Something.Bar
     unknownValue
     exposedElement
@@ -152,7 +149,6 @@ c = 1
 Something.b -> Something.B.b
 Something.c -> Something.C.c
 Something.BAlias -> Something.B.BAlias
-Something.Foo -> Something.B.Foo
 Something.Bar -> Something.B.Bar
 <nothing>.unknownValue -> <nothing>.unknownValue
 <nothing>.exposedElement -> ExposesSomeThings.exposedElement
@@ -174,45 +170,13 @@ Http.get -> Http.get
                                 }
                             ]
                           )
-                        , ( "ExposesSomeThings"
-                          , [ Review.Test.error
-                                { message = ""
-                                , details = [ "details" ]
-                                , under = "module"
-                                }
-                            ]
-                          )
-                        , ( "ExposesEverything"
-                          , [ Review.Test.error
-                                { message = ""
-                                , details = [ "details" ]
-                                , under = "module"
-                                }
-                            ]
-                          )
-                        , ( "Something.B"
-                          , [ Review.Test.error
-                                { message = ""
-                                , details = [ "details" ]
-                                , under = "module"
-                                }
-                            ]
-                          )
-                        , ( "Something.C"
-                          , [ Review.Test.error
-                                { message = ""
-                                , details = [ "details" ]
-                                , under = "module"
-                                }
-                            ]
-                          )
                         ]
         ]
 
 
 type alias ModuleContext =
     { scope : Scope.ModuleContext
-    , text : String
+    , texts : List String
     }
 
 
@@ -232,7 +196,7 @@ projectRule =
             { fromProjectToModule =
                 \_ _ projectContext ->
                     { scope = Scope.fromProjectToModule projectContext.scope
-                    , text = ""
+                    , texts = []
                     }
             , fromModuleToProject =
                 \_ moduleNameNode moduleContext ->
@@ -245,7 +209,7 @@ projectRule =
 
 moduleRule : Rule
 moduleRule =
-    Rule.newModuleRuleSchema "TestRule" { scope = Scope.initialModuleContext, text = "" }
+    Rule.newModuleRuleSchema "TestRule" { scope = Scope.initialModuleContext, texts = [] }
         |> Scope.addModuleVisitors
         |> moduleVisitor
         |> Rule.fromModuleRuleSchema
@@ -256,51 +220,6 @@ moduleVisitor schema =
     schema
         |> Rule.withExpressionVisitor expressionVisitor
         |> Rule.withFinalModuleEvaluation finalEvaluation
-
-
-typeAnnotationNames : Scope.ModuleContext -> Node TypeAnnotation -> String
-typeAnnotationNames scope typeAnnotation =
-    case Node.value typeAnnotation of
-        TypeAnnotation.GenericType name ->
-            "<nothing>." ++ name ++ " -> <generic>"
-
-        TypeAnnotation.Typed (Node _ ( moduleName, typeName )) typeParameters ->
-            -- Elm.Type.Type (String.join "." moduleName ++ "." ++ typeName) (List.map syntaxTypeAnnotationToDocsType typeParameters)
-            let
-                nameInCode : String
-                nameInCode =
-                    case moduleName of
-                        [] ->
-                            "<nothing>." ++ typeName
-
-                        _ ->
-                            String.join "." moduleName ++ "." ++ typeName
-
-                realName : String
-                realName =
-                    case Scope.realModuleName scope typeName moduleName of
-                        [] ->
-                            "<nothing>." ++ typeName
-
-                        moduleName_ ->
-                            String.join "." moduleName_ ++ "." ++ typeName
-            in
-            nameInCode ++ " -> " ++ realName
-
-        TypeAnnotation.Unit ->
-            "unknown"
-
-        TypeAnnotation.Tupled typeAnnotationTypeAnnotationSyntaxElmNodeNodeSyntaxElmListList ->
-            "unknown"
-
-        TypeAnnotation.Record recordDefinitionTypeAnnotationSyntaxElm ->
-            "unknown"
-
-        TypeAnnotation.GenericRecord stringStringNodeNodeSyntaxElm recordDefinitionTypeAnnotationSyntaxElmNodeNodeSyntaxElm ->
-            "unknown"
-
-        TypeAnnotation.FunctionTypeAnnotation arg returnType ->
-            typeAnnotationNames scope arg ++ "\n" ++ typeAnnotationNames scope returnType
 
 
 expressionVisitor : Node Expression -> Rule.Direction -> ModuleContext -> ( List nothing, ModuleContext )
@@ -319,14 +238,14 @@ expressionVisitor node direction context =
 
                 realName : String
                 realName =
-                    case Scope.realModuleName context.scope name moduleName of
+                    case Scope.moduleNameForValue context.scope name moduleName of
                         [] ->
                             "<nothing>." ++ name
 
                         moduleName_ ->
                             String.join "." moduleName_ ++ "." ++ name
             in
-            ( [], { context | text = context.text ++ "\n" ++ nameInCode ++ " -> " ++ realName } )
+            ( [], { context | texts = context.texts ++ [ nameInCode ++ " -> " ++ realName ] } )
 
         _ ->
             ( [], context )
@@ -334,8 +253,15 @@ expressionVisitor node direction context =
 
 finalEvaluation : ModuleContext -> List (Error {})
 finalEvaluation context =
-    [ Rule.error { message = context.text, details = [ "details" ] }
-        { start = { row = 1, column = 1 }
-        , end = { row = 1, column = 7 }
-        }
-    ]
+    if List.isEmpty context.texts then
+        []
+
+    else
+        [ Rule.error
+            { message = "\n" ++ String.join "\n" context.texts
+            , details = [ "details" ]
+            }
+            { start = { row = 1, column = 1 }
+            , end = { row = 1, column = 7 }
+            }
+        ]
