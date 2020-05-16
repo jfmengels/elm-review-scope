@@ -15,14 +15,14 @@ import Test exposing (Test, test)
 all : Test
 all =
     Test.describe "Scope"
-        [ realModuleNameTestsForModuleRule
-        , realModuleNameTestsForProjectRule
+        [ moduleNameForValueTestsForModuleRule
+        , moduleNameForValueTestsForProjectRule
         ]
 
 
-realModuleNameTestsForModuleRule : Test
-realModuleNameTestsForModuleRule =
-    Test.describe "Scope.realModuleName (module rule)"
+moduleNameForValueTestsForModuleRule : Test
+moduleNameForValueTestsForModuleRule =
+    Test.describe "Scope.moduleNameForValue (module rule)"
         [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
             \() ->
                 """module A exposing (..)
@@ -84,9 +84,9 @@ Http.get -> Http.get
         ]
 
 
-realModuleNameTestsForProjectRule : Test
-realModuleNameTestsForProjectRule =
-    Test.describe "Scope.realModuleName (project rule)"
+moduleNameForValueTestsForProjectRule : Test
+moduleNameForValueTestsForProjectRule =
+    Test.describe "Scope.moduleNameForValue (project rule)"
         [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
             \() ->
                 [ """module A exposing (..)
@@ -304,7 +304,7 @@ typeAnnotationNames scope typeAnnotation =
 
                 realName : String
                 realName =
-                    case Scope.realModuleName scope typeName moduleName of
+                    case Scope.moduleNameForValue scope typeName moduleName of
                         [] ->
                             "<nothing>." ++ typeName
 
@@ -345,7 +345,7 @@ expressionVisitor node direction context =
 
                 realName : String
                 realName =
-                    case Scope.realModuleName context.scope name moduleName of
+                    case Scope.moduleNameForValue context.scope name moduleName of
                         [] ->
                             "<nothing>." ++ name
 

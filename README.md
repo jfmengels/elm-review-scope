@@ -1,6 +1,6 @@
 # elm-review-scope
 
-Temporary version: `0.1.1`.
+Current version: `0.1.1`.
 
 Provides a helper for [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) that automatically collects information about the scope.
 
@@ -50,7 +50,7 @@ You can view the docs at https://elm-doc-preview.netlify.com/?repo=jfmengels/elm
 
 ## Example use for modules rules
 
-**Note**: Because module rules don't have the knowledge of what is exposed in the modules from the project that are being imported, you will not get the correct answer when you request the `realModuleName` of
+**Note**: Because module rules don't have the knowledge of what is exposed in the modules from the project that are being imported, you will not get the correct answer when you request the `moduleNameForFunction` of
 1. an element that was imported through `import A exposing (..)`
 2. a type imported through `import A exposing (B(..))`
 3. a qualified import whose module name points to several modules, e.g. `import X ; import Bar as X ; value = X.a` (which module does `a` really come from?)
@@ -92,7 +92,7 @@ expressionVisitor : Node Expression -> Direction -> Context -> ( List (Error {})
 expressionVisitor node direction context =
     case ( direction, Node.value node ) of
         ( Rule.OnEnter, Expression.FunctionOrValue moduleName "button" ) ->
-            if Scope.realModuleName context.scope "button" moduleName == [ "Html" ] then
+            if Scope.moduleNameForFunction context.scope "button" moduleName == [ "Html" ] then
                 ( [ Rule.error
                         { message = "Do not use `Html.button` directly"
                         , details = [ "At fruits.com, we've built a nice `Button` module that suits our needs better. Using this module instead of `Html.button` ensures we have a consistent button experience across the website." ]

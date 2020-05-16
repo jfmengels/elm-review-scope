@@ -2,7 +2,7 @@ module Scope exposing
     ( ModuleContext, addModuleVisitors, initialModuleContext
     , ProjectContext, addProjectVisitors
     , initialProjectContext, fromProjectToModule, fromModuleToProject, foldProjectContexts
-    , realModuleName
+    , moduleNameForValue
     )
 
 {-| Collect and infer information automatically for you
@@ -21,7 +21,7 @@ module Scope exposing
 
 # Access
 
-@docs realModuleName
+@docs moduleNameForValue
 
 -}
 
@@ -1164,8 +1164,8 @@ If the element was defined in the current module, then the result will be `[]`.
 Help is welcome!
 
 -}
-realModuleName : ModuleContext -> String -> List String -> List String
-realModuleName (ModuleContext context) functionOrType moduleName =
+moduleNameForValue : ModuleContext -> String -> List String -> List String
+moduleNameForValue (ModuleContext context) functionOrType moduleName =
     case moduleName of
         [] ->
             if isInScope functionOrType context.scopes then
