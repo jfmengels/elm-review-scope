@@ -14,13 +14,6 @@ import Test exposing (Test, test)
 all : Test
 all =
     Test.describe "Scope.moduleNameForType"
-        [ moduleNameForTypeTestsForProjectRule
-        ]
-
-
-moduleNameForTypeTestsForProjectRule : Test
-moduleNameForTypeTestsForProjectRule =
-    Test.describe "Scope.moduleNameForType (project rule)"
         [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
             \() ->
                 [ """module A exposing (..)

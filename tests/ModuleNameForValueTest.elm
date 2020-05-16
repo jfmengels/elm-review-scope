@@ -12,16 +12,16 @@ import Test exposing (Test, test)
 
 all : Test
 all =
-    Test.describe "Scope"
-        [ realModuleNameTestsForModuleRule
-        , realModuleNameTestsForProjectRule
+    Test.describe "Scope.moduleNameForValue"
+        [ forModuleRule
+        , forProjectRule
         ]
 
 
-realModuleNameTestsForModuleRule : Test
-realModuleNameTestsForModuleRule =
-    Test.describe "Scope.moduleNameForValue (module rule)"
-        [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
+forModuleRule : Test
+forModuleRule =
+    Test.describe "module rule"
+        [ test "should return the module that defined the value" <|
             \() ->
                 """module A exposing (..)
 import Bar as Baz exposing (baz)
@@ -77,10 +77,10 @@ Http.get -> Http.get
         ]
 
 
-realModuleNameTestsForProjectRule : Test
-realModuleNameTestsForProjectRule =
-    Test.describe "Scope.moduleNameForValue (project rule)"
-        [ test "should indicate that module from which a function or value comes from, with knowledge of what is in other modules" <|
+forProjectRule : Test
+forProjectRule =
+    Test.describe "project rule"
+        [ test "should return the module that defined the value" <|
             \() ->
                 [ """module A exposing (..)
 import Bar as Baz exposing (baz)
