@@ -70,6 +70,8 @@ import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern as Pattern exposing (Pattern)
 import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.Signature exposing (Signature)
+import Elm.Syntax.Type
+import Elm.Syntax.TypeAlias
 import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
 import Elm.Type
 import Review.Project.Dependency as Dependency exposing (Dependency)
@@ -583,66 +585,64 @@ createFakeImport { moduleName, moduleAlias, exposingList } =
 declarationListVisitor : List (Node Declaration) -> InnerModuleContext -> InnerModuleContext
 declarationListVisitor declarations innerContext =
     List.foldl registerDeclaration innerContext declarations
-        |> (\newInnerContext -> List.foldl registerExposed newInnerContext declarations)
 
 
 registerDeclaration : Node Declaration -> InnerModuleContext -> InnerModuleContext
 registerDeclaration declaration innerContext =
-    let
-        addToScope : { variableType : VariableType, node : Node String } -> Nonempty Scope
-        addToScope variableData =
-            registerVariable
-                variableData
-                (Node.value variableData.node)
-                innerContext.scopes
-    in
     case Node.value declaration of
         Declaration.FunctionDeclaration function ->
-            addToScope
-                { variableType = TopLevelVariable
-                , node =
+            let
+                nameNode : Node String
+                nameNode =
                     function.declaration
                         |> Node.value
                         |> .name
-                }
-                |> updateScope innerContext
+            in
+            innerContext
+                |> addToScope
+                    { variableType = TopLevelVariable
+                    , node = nameNode
+                    }
+                |> registerIfExposed (registerExposedValue function) (Node.value nameNode)
 
         Declaration.AliasDeclaration alias_ ->
             -- TODO add to local types too
-            addToScope
-                { variableType = TopLevelVariable
-                , node = alias_.name
-                }
-                |> updateScope innerContext
+            innerContext
+                |> addToScope
+                    { variableType = TopLevelVariable
+                    , node = alias_.name
+                    }
+                |> registerIfExposed (registerExposedTypeAlias alias_) (Node.value alias_.name)
 
         Declaration.CustomTypeDeclaration { name, constructors } ->
             -- TODO add to local types
+            --( TopLevelVariable, name )
             List.foldl
-                (\constructor scope ->
+                (\constructor innerContext_ ->
                     let
+                        constructorName : Node String
                         constructorName =
                             constructor |> Node.value |> .name
                     in
-                    registerVariable
+                    addToScope
                         { variableType = CustomTypeConstructor
                         , node = constructorName
                         }
-                        (Node.value constructorName)
-                        scope
+                        innerContext_
                 )
-                innerContext.scopes
+                innerContext
                 constructors
-                |> updateScope innerContext
+                |> registerIfExposed (registerExposedCustomType constructors) (Node.value name)
 
         Declaration.PortDeclaration signature ->
             addToScope
                 { variableType = Port
                 , node = signature.name
                 }
-                |> updateScope innerContext
+                innerContext
 
         Declaration.InfixDeclaration _ ->
-            -- Scope doesn't support operators at the moment.
+            -- TODO Support operators
             -- I could use help adding this.
             innerContext
 
@@ -651,74 +651,75 @@ registerDeclaration declaration innerContext =
             innerContext
 
 
-registerExposed : Node Declaration -> InnerModuleContext -> InnerModuleContext
-registerExposed declaration innerContext =
-    case Node.value declaration of
-        Declaration.FunctionDeclaration function ->
-            let
-                name : String
-                name =
-                    function.declaration
-                        |> Node.value
-                        |> .name
-                        |> Node.value
-            in
-            if innerContext.exposesEverything || Dict.member name innerContext.exposedNames then
-                { innerContext
-                    | exposedValues =
-                        { name = name
-                        , comment = ""
-                        , tipe = convertTypeSignatureToDocsType function.signature
-                        }
-                            :: innerContext.exposedValues
-                }
+addToScope : { variableType : VariableType, node : Node String } -> InnerModuleContext -> InnerModuleContext
+addToScope variableData innerContext =
+    let
+        newScopes : Nonempty Scope
+        newScopes =
+            registerVariable
+                variableData
+                (Node.value variableData.node)
+                innerContext.scopes
+    in
+    { innerContext | scopes = newScopes }
 
-            else
-                innerContext
 
-        Declaration.CustomTypeDeclaration type_ ->
-            if innerContext.exposesEverything || Dict.member (Node.value type_.name) innerContext.exposedNames then
-                { innerContext
-                    | exposedUnions =
-                        { name = Node.value type_.name
-                        , comment = ""
+registerExposedValue : Expression.Function -> String -> InnerModuleContext -> InnerModuleContext
+registerExposedValue function name innerContext =
+    { innerContext
+        | exposedValues =
+            { name = name
+            , comment =
+                case Maybe.map Node.value function.documentation of
+                    Just str ->
+                        str
 
-                        -- TODO
-                        , args = []
-                        , tags =
-                            type_.constructors
-                                -- TODO Constructor args?
-                                |> List.map (\constructor -> ( Node.value (Node.value constructor).name, [] ))
-                        }
-                            :: innerContext.exposedUnions
-                }
+                    Nothing ->
+                        ""
+            , tipe = convertTypeSignatureToDocsType function.signature
+            }
+                :: innerContext.exposedValues
+    }
 
-            else
-                innerContext
 
-        Declaration.AliasDeclaration alias_ ->
-            if innerContext.exposesEverything || Dict.member (Node.value alias_.name) innerContext.exposedNames then
-                { innerContext
-                    | exposedAliases =
-                        { name = Node.value alias_.name
-                        , comment = ""
-                        , args = []
-                        , tipe = Elm.Type.Tuple []
-                        }
-                            :: innerContext.exposedAliases
-                }
+registerExposedCustomType : List (Node Elm.Syntax.Type.ValueConstructor) -> String -> InnerModuleContext -> InnerModuleContext
+registerExposedCustomType constructors name innerContext =
+    { innerContext
+        | exposedUnions =
+            { name = name
+            , comment = ""
 
-            else
-                innerContext
+            -- TODO
+            , args = []
+            , tags =
+                constructors
+                    -- TODO Constructor args?
+                    |> List.map (\constructor -> ( Node.value (Node.value constructor).name, [] ))
+            }
+                :: innerContext.exposedUnions
+    }
 
-        Declaration.PortDeclaration _ ->
-            innerContext
 
-        Declaration.InfixDeclaration _ ->
-            innerContext
+registerExposedTypeAlias : Elm.Syntax.TypeAlias.TypeAlias -> String -> InnerModuleContext -> InnerModuleContext
+registerExposedTypeAlias constructors name innerContext =
+    { innerContext
+        | exposedAliases =
+            { name = name
+            , comment = ""
+            , args = []
+            , tipe = Elm.Type.Tuple []
+            }
+                :: innerContext.exposedAliases
+    }
 
-        Declaration.Destructuring _ _ ->
-            innerContext
+
+registerIfExposed : (String -> InnerModuleContext -> InnerModuleContext) -> String -> InnerModuleContext -> InnerModuleContext
+registerIfExposed registerFn name innerContext =
+    if innerContext.exposesEverything || Dict.member name innerContext.exposedNames then
+        registerFn name innerContext
+
+    else
+        innerContext
 
 
 convertTypeSignatureToDocsType : Maybe (Node Signature) -> Elm.Type.Type
@@ -765,8 +766,8 @@ registerVariable variableInfo name scopes =
 
 
 updateScope : InnerModuleContext -> Nonempty Scope -> InnerModuleContext
-updateScope context scopes =
-    { context | scopes = scopes }
+updateScope innerContext scopes =
+    { innerContext | scopes = scopes }
 
 
 
@@ -1218,7 +1219,46 @@ moduleNameForValue (ModuleContext context) functionOrType moduleName =
 
 moduleNameForType : ModuleContext -> String -> List String -> List String
 moduleNameForType (ModuleContext context) functionOrType moduleName =
-    []
+    case moduleName of
+        [] ->
+            --context.exposedUnions
+            if isInScope functionOrType context.scopes then
+                []
+
+            else
+                Dict.get functionOrType context.importedFunctionOrTypes
+                    |> Maybe.withDefault []
+
+        _ :: [] ->
+            case Dict.get (getModuleName moduleName) context.importAliases of
+                Just [ aliasedModuleName ] ->
+                    aliasedModuleName
+
+                Just aliases ->
+                    case
+                        findInList
+                            (\aliasedModuleName ->
+                                case Dict.get aliasedModuleName context.modules of
+                                    Just module_ ->
+                                        isDeclaredInModule functionOrType module_
+
+                                    Nothing ->
+                                        False
+                            )
+                            aliases
+                    of
+                        Just aliasedModuleName ->
+                            aliasedModuleName
+
+                        Nothing ->
+                            List.head aliases
+                                |> Maybe.withDefault moduleName
+
+                Nothing ->
+                    moduleName
+
+        _ ->
+            moduleName
 
 
 isDeclaredInModule : String -> Elm.Docs.Module -> Bool
