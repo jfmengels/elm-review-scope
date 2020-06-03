@@ -227,7 +227,7 @@ fromModuleToProject moduleName (ModuleContext moduleContext) =
     ProjectContext
         { dependenciesModules = moduleContext.dependenciesModules
         , modules =
-            Dict.insert (Node.value moduleName)
+            Dict.singleton (Node.value moduleName)
                 { name = String.join "." (Node.value moduleName)
                 , comment = ""
                 , unions = moduleContext.exposedUnions
@@ -235,7 +235,6 @@ fromModuleToProject moduleName (ModuleContext moduleContext) =
                 , values = moduleContext.exposedValues
                 , binops = moduleContext.exposedBinops
                 }
-                moduleContext.modules
         }
 
 
@@ -250,10 +249,10 @@ fromModuleToProject moduleName (ModuleContext moduleContext) =
 
 -}
 foldProjectContexts : ProjectContext -> ProjectContext -> ProjectContext
-foldProjectContexts (ProjectContext a) (ProjectContext b) =
+foldProjectContexts (ProjectContext newContext) (ProjectContext previousContext) =
     ProjectContext
-        { dependenciesModules = Dict.union b.dependenciesModules a.dependenciesModules
-        , modules = Dict.union b.modules a.modules
+        { dependenciesModules = previousContext.dependenciesModules
+        , modules = Dict.union previousContext.modules newContext.modules
         }
 
 

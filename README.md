@@ -85,7 +85,7 @@ When looking at `valueOfTypeA = B`, the `B` is an custom type constructor define
 When looking at `valueOfTypeB : B`, the `B` is a (custom) type defined in module `B`.
 
 In the former situation, `B` is in the realm of values, so you should use `moduleNameForValue`.
-In the latter situation, `B` is in the realm of types, so you should use `moduleNameForType`. 
+In the latter situation, `B` is in the realm of types, so you should use `moduleNameForType`.
 
 ## Example use for modules rules
 
