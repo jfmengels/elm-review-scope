@@ -27,7 +27,7 @@ module Scope exposing
 
 {- Copied over from https://github.com/jfmengels/elm-review-scope
 
-   Version: 0.2.0
+   Version: 0.2.1
 
    Copyright (c) 2020, Jeroen Engels
    All rights reserved.
@@ -225,7 +225,7 @@ fromProjectToModule (ProjectContext projectContext) =
 fromModuleToProject : Node ModuleName -> ModuleContext -> ProjectContext
 fromModuleToProject moduleName (ModuleContext moduleContext) =
     ProjectContext
-        { dependenciesModules = moduleContext.dependenciesModules
+        { dependenciesModules = Dict.empty
         , modules =
             Dict.singleton (Node.value moduleName)
                 { name = String.join "." (Node.value moduleName)
