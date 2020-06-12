@@ -71,7 +71,6 @@ import Elm.Syntax.Pattern as Pattern exposing (Pattern)
 import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.Signature exposing (Signature)
 import Elm.Syntax.Type
-import Elm.Syntax.TypeAlias
 import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
 import Elm.Type
 import Review.Project.Dependency as Dependency exposing (Dependency)
@@ -615,7 +614,7 @@ registerDeclaration declaration innerContext =
                     { variableType = TopLevelVariable
                     , node = alias_.name
                     }
-                |> registerIfExposed (registerExposedTypeAlias alias_) (Node.value alias_.name)
+                |> registerIfExposed registerExposedTypeAlias (Node.value alias_.name)
 
         Declaration.CustomTypeDeclaration { name, constructors } ->
             List.foldl
@@ -701,8 +700,8 @@ registerExposedCustomType constructors name innerContext =
     }
 
 
-registerExposedTypeAlias : Elm.Syntax.TypeAlias.TypeAlias -> String -> InnerModuleContext -> InnerModuleContext
-registerExposedTypeAlias alias_ name innerContext =
+registerExposedTypeAlias : String -> InnerModuleContext -> InnerModuleContext
+registerExposedTypeAlias name innerContext =
     { innerContext
         | exposedAliases =
             { name = name
@@ -746,16 +745,16 @@ syntaxTypeAnnotationToDocsType (Node _ typeAnnotation) =
         TypeAnnotation.Unit ->
             Elm.Type.Tuple []
 
-        TypeAnnotation.Tupled typeAnnotationTypeAnnotationSyntaxElmNodeNodeSyntaxElmListList ->
+        TypeAnnotation.Tupled _ ->
             Elm.Type.Tuple []
 
-        TypeAnnotation.Record recordDefinitionTypeAnnotationSyntaxElm ->
+        TypeAnnotation.Record _ ->
             Elm.Type.Tuple []
 
-        TypeAnnotation.GenericRecord stringStringNodeNodeSyntaxElm recordDefinitionTypeAnnotationSyntaxElmNodeNodeSyntaxElm ->
+        TypeAnnotation.GenericRecord _ _ ->
             Elm.Type.Tuple []
 
-        TypeAnnotation.FunctionTypeAnnotation typeAnnotationTypeAnnotationSyntaxElmNodeNodeSyntaxElm typeAnnotationTypeAnnotationSyntaxElmNodeNodeSyntaxElm2 ->
+        TypeAnnotation.FunctionTypeAnnotation _ _ ->
             Elm.Type.Tuple []
 
 
@@ -1138,7 +1137,7 @@ expressionVisitor (Node _ value) direction context =
                                 (Node.value nameNode)
                                 scopes
 
-                        Expression.LetDestructuring pattern _ ->
+                        Expression.LetDestructuring _ _ ->
                             scopes
                 )
                 (nonemptyList_cons emptyScope context.scopes)
@@ -1434,7 +1433,7 @@ nonemptyList_fromElement x =
 {-| Return the head of the list.
 -}
 nonemptyList_head : Nonempty a -> a
-nonemptyList_head (Nonempty x xs) =
+nonemptyList_head (Nonempty x _) =
     x
 
 

@@ -20,6 +20,8 @@ import NoUnused.CustomTypeConstructors
 import NoUnused.Dependencies
 import NoUnused.Exports
 import NoUnused.Modules
+import NoUnused.Parameters
+import NoUnused.Patterns
 import NoUnused.Variables
 import Review.Rule exposing (Rule)
 
@@ -36,4 +38,6 @@ config =
     , NoUnused.Exports.rule
     , NoUnused.Modules.rule
     , NoUnused.Variables.rule
+    , NoUnused.Patterns.rule
+    , NoUnused.Parameters.rule
     ]
