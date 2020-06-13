@@ -27,7 +27,7 @@ module Scope exposing
 
 {- Copied over from https://github.com/jfmengels/elm-review-scope
 
-   Version: 0.2.1
+   Version: 0.2.2
 
    Copyright (c) 2020, Jeroen Engels
    All rights reserved.
@@ -676,7 +676,7 @@ registerExposedValue function name innerContext =
 
                     Nothing ->
                         ""
-            , tipe = convertTypeSignatureToDocsType function.signature
+            , tipe = convertTypeSignatureToDocsType innerContext function.signature
             }
                 :: innerContext.exposedValues
     }
@@ -722,40 +722,57 @@ registerIfExposed registerFn name innerContext =
         innerContext
 
 
-convertTypeSignatureToDocsType : Maybe (Node Signature) -> Elm.Type.Type
-convertTypeSignatureToDocsType maybeSignature =
+convertTypeSignatureToDocsType : InnerModuleContext -> Maybe (Node Signature) -> Elm.Type.Type
+convertTypeSignatureToDocsType innerContext maybeSignature =
     case maybeSignature |> Maybe.map (Node.value >> .typeAnnotation) of
         Just typeAnnotation ->
-            syntaxTypeAnnotationToDocsType typeAnnotation
+            syntaxTypeAnnotationToDocsType innerContext typeAnnotation
 
         Nothing ->
             Elm.Type.Tuple []
 
 
-syntaxTypeAnnotationToDocsType : Node TypeAnnotation -> Elm.Type.Type
-syntaxTypeAnnotationToDocsType (Node _ typeAnnotation) =
+syntaxTypeAnnotationToDocsType : InnerModuleContext -> Node TypeAnnotation -> Elm.Type.Type
+syntaxTypeAnnotationToDocsType innerContext (Node _ typeAnnotation) =
     case typeAnnotation of
         TypeAnnotation.GenericType name ->
             Elm.Type.Var name
 
         TypeAnnotation.Typed (Node _ ( moduleName, typeName )) typeParameters ->
-            -- Elm.Type.Type (String.join "." moduleName ++ "." ++ typeName) (List.map syntaxTypeAnnotationToDocsType typeParameters)
-            Elm.Type.Tuple []
+            let
+                realModuleName : List String
+                realModuleName =
+                    moduleNameForType (ModuleContext innerContext) typeName moduleName
+            in
+            Elm.Type.Type (String.join "." realModuleName ++ "." ++ typeName) (List.map (syntaxTypeAnnotationToDocsType innerContext) typeParameters)
 
         TypeAnnotation.Unit ->
             Elm.Type.Tuple []
 
-        TypeAnnotation.Tupled _ ->
-            Elm.Type.Tuple []
+        TypeAnnotation.Tupled list ->
+            Elm.Type.Tuple (List.map (syntaxTypeAnnotationToDocsType innerContext) list)
 
-        TypeAnnotation.Record _ ->
-            Elm.Type.Tuple []
+        TypeAnnotation.Record updates ->
+            Elm.Type.Record (recordUpdateToDocsType innerContext updates) Nothing
 
-        TypeAnnotation.GenericRecord _ _ ->
-            Elm.Type.Tuple []
+        TypeAnnotation.GenericRecord (Node _ generic) (Node _ updates) ->
+            Elm.Type.Record (recordUpdateToDocsType innerContext updates) (Just generic)
 
-        TypeAnnotation.FunctionTypeAnnotation _ _ ->
-            Elm.Type.Tuple []
+        TypeAnnotation.FunctionTypeAnnotation left right ->
+            Elm.Type.Lambda
+                (syntaxTypeAnnotationToDocsType innerContext left)
+                (syntaxTypeAnnotationToDocsType innerContext right)
+
+
+recordUpdateToDocsType : InnerModuleContext -> List (Node TypeAnnotation.RecordField) -> List ( String, Elm.Type.Type )
+recordUpdateToDocsType innerContext updates =
+    List.map
+        (\(Node _ ( name, typeAnnotation )) ->
+            ( Node.value name
+            , syntaxTypeAnnotationToDocsType innerContext typeAnnotation
+            )
+        )
+        updates
 
 
 registerVariable : VariableInfo -> String -> Nonempty Scope -> Nonempty Scope
