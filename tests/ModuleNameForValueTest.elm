@@ -91,6 +91,8 @@ import Html exposing (..)
 import Http exposing (get)
 import Something.B as Something
 import Something.C as Something
+import Platform.Cmd exposing (none)
+import Platform.Sub exposing (..)
 
 localValue = 1
 localValueValueToBeShadowed = 1
@@ -119,6 +121,9 @@ a = localValue
     always
     True
     Just
+    Cmd.none
+    none
+    batch
 """, """module ExposesSomeThings exposing (SomeOtherTypeAlias, exposedElement)
 type NonExposedCustomType = Variant
 type alias SomeOtherTypeAlias = {}
@@ -164,7 +169,10 @@ Http.get -> Http.get
 <nothing>.get -> Http.get
 <nothing>.always -> Basics.always
 <nothing>.True -> Basics.True
-<nothing>.Just -> Maybe.Just"""
+<nothing>.Just -> Maybe.Just
+Cmd.none -> Platform.Cmd.none
+<nothing>.none -> Platform.Cmd.none
+<nothing>.batch -> Platform.Sub.batch"""
                                 , details = [ "details" ]
                                 , under = "module"
                                 }

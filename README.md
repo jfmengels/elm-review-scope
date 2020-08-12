@@ -1,6 +1,6 @@
 # elm-review-scope
 
-Current version: `0.3.0`.
+Current version: `0.3.1`.
 
 Provides a helper for [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) that automatically collects information about the scope.
 
