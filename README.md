@@ -6,7 +6,7 @@ Provides a helper for [`elm-review`](https://package.elm-lang.org/packages/jfmen
 
 The `Scope` module collects information about where a variable comes from. It answers questions like "Was `foo` defined in the current module? If not, which module does it come from?". `Scope` looks at dependencies and other imported modules to give you the best answer, and follows import aliases.
 
-This module is designed to work `jfmengels/elm-review` version `2.x.y`.
+This module is designed to work `jfmengels/elm-review` version `2.2.0` and later.
 
 ## The problem
 
