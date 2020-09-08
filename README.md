@@ -1,3 +1,7 @@
+# DEPRECATED
+
+Native support for this is available in the `elm-review` package through the use of `ModuleNameLookupTable`. See [here](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/Review-Rule#withModuleNameLookupTable) for how to use it and an example.
+
 # elm-review-scope
 
 Current version: `0.3.1`.
